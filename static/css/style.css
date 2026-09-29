@@ -142,16 +142,6 @@ header {
   gap: 8px;
 }
 
-.brand-title .tag {
-  font-size: 9px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 1px;
-}
-
 .brand-title p {
   font-size: 11px;
   color: var(--text-muted);
