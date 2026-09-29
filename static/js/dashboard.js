@@ -7,12 +7,21 @@ class DashboardController {
   constructor() {
     this.ws = null;
     this.reconnectTimer = null;
-    this.stations = [];
-    this.activeStationId = "STN-NE01";
+    this.currentCategory = "landslide";
+    this.stationsByCategory = {
+      landslide: [],
+      flood: [],
+      wildfire: [],
+    };
+    this.activeStations = {
+      landslide: "STN-NE01",
+      flood: "STN-FL01",
+      wildfire: "STN-WF01",
+    };
   }
 
   init() {
-    this.fetchLandslideStations();
+    this.fetchAllStations();
     this.fetchInitialStateREST();
     this.connectWebSocket();
     this.setupInspector();
@@ -21,47 +30,85 @@ class DashboardController {
     setInterval(() => this.pollStatusREST(), 3000);
   }
 
-  async fetchLandslideStations() {
+  async fetchAllStations() {
     try {
-      const resp = await fetch("/api/v1/landslides/stations");
-      if (resp.ok) {
-        const data = await resp.json();
-        this.stations = data.stations || [];
-        if (data.active_station && data.active_station.id) {
-          this.activeStationId = data.active_station.id;
-        }
-        this.renderSectorPills();
+      const [lsRes, flRes, wfRes] = await Promise.all([
+        fetch("/api/v1/landslides/stations").then(r => r.ok ? r.json() : null),
+        fetch("/api/v1/floods/stations").then(r => r.ok ? r.json() : null),
+        fetch("/api/v1/wildfires/stations").then(r => r.ok ? r.json() : null),
+      ]);
+
+      if (lsRes) {
+        this.stationsByCategory.landslide = lsRes.stations || [];
+        if (lsRes.active_station) this.activeStations.landslide = lsRes.active_station.id;
         if (window.disasterMap && typeof window.disasterMap.renderLandslideStations === "function") {
-          window.disasterMap.renderLandslideStations(this.stations);
+          window.disasterMap.renderLandslideStations(this.stationsByCategory.landslide);
         }
-        const activeSt = this.stations.find((s) => s.id === this.activeStationId) || this.stations[0];
-        if (activeSt) {
-          this.updateLandslideCardSpecs(activeSt);
-        }
+        const activeLs = this.stationsByCategory.landslide.find(s => s.id === this.activeStations.landslide) || this.stationsByCategory.landslide[0];
+        if (activeLs) this.updateLandslideCardSpecs(activeLs);
       }
+
+      if (flRes) {
+        this.stationsByCategory.flood = flRes.stations || [];
+        if (flRes.active_station) this.activeStations.flood = flRes.active_station.id;
+        if (window.disasterMap && typeof window.disasterMap.renderFloodStations === "function") {
+          window.disasterMap.renderFloodStations(this.stationsByCategory.flood);
+        }
+        const activeFl = this.stationsByCategory.flood.find(s => s.id === this.activeStations.flood) || this.stationsByCategory.flood[0];
+        if (activeFl) this.updateFloodCardSpecs(activeFl);
+      }
+
+      if (wfRes) {
+        this.stationsByCategory.wildfire = wfRes.stations || [];
+        if (wfRes.active_station) this.activeStations.wildfire = wfRes.active_station.id;
+        if (window.disasterMap && typeof window.disasterMap.renderWildfireStations === "function") {
+          window.disasterMap.renderWildfireStations(this.stationsByCategory.wildfire);
+        }
+        const activeWf = this.stationsByCategory.wildfire.find(s => s.id === this.activeStations.wildfire) || this.stationsByCategory.wildfire[0];
+        if (activeWf) this.updateWildfireCardSpecs(activeWf);
+      }
+
+      this.renderSectorPills();
     } catch (err) {
-      console.warn("Could not fetch landslide stations:", err);
+      console.warn("Could not fetch disaster stations:", err);
     }
+  }
+
+  switchNetworkTab(category) {
+    this.currentCategory = category;
+    document.querySelectorAll(".network-tab-btn").forEach(btn => btn.classList.remove("active"));
+    const activeBtn = document.getElementById(`net-tab-${category}`);
+    if (activeBtn) activeBtn.classList.add("active");
+    this.renderSectorPills();
   }
 
   renderSectorPills() {
     const wrap = document.getElementById("landslide-sector-pills");
     const countEl = document.getElementById("total-stations-count");
-    if (countEl) countEl.textContent = this.stations.length;
+    const totalCount = (this.stationsByCategory.landslide.length) + (this.stationsByCategory.flood.length) + (this.stationsByCategory.wildfire.length);
+    if (countEl) countEl.textContent = totalCount || 19;
     if (!wrap) return;
 
     wrap.innerHTML = "";
-    this.stations.forEach((st) => {
-      const isSelected = (st.id === this.activeStationId);
+    const stations = this.stationsByCategory[this.currentCategory] || [];
+    const activeId = this.activeStations[this.currentCategory];
+
+    let activeClass = "active";
+    if (this.currentCategory === "flood") activeClass = "active active-flood";
+    else if (this.currentCategory === "wildfire") activeClass = "active active-wildfire";
+
+    stations.forEach((st) => {
+      const isSelected = (st.id === activeId);
       const isLive = Boolean(st.is_active_iot_field_unit);
       const pill = document.createElement("div");
-      pill.className = `sector-pill ${isSelected ? "active" : ""}`;
+      pill.className = `sector-pill ${isSelected ? activeClass : ""}`;
       pill.id = `sector-pill-${st.id}`;
-      pill.onclick = () => this.selectStation(st.id, true);
+      pill.onclick = () => this.selectStation(this.currentCategory, st.id, true);
 
+      let tagLabel = st.gsi_susceptibility || st.cwc_index || st.fsi_hazard_class || "HIGH";
       const tagHtml = isLive
         ? `<span class="sector-pill-tag tag-live">LIVE IoT</span>`
-        : `<span class="sector-pill-tag">${st.gsi_susceptibility || "GSI"}</span>`;
+        : `<span class="sector-pill-tag">${tagLabel}</span>`;
 
       pill.innerHTML = `
         <div class="sector-pill-top">
@@ -75,22 +122,48 @@ class DashboardController {
     });
   }
 
-  async selectStation(stationId, flyTo = true) {
-    this.activeStationId = stationId;
-    const st = this.stations.find((s) => s.id === stationId);
+  async selectStation(catOrId, maybeId, flyTo = true) {
+    let category = this.currentCategory;
+    let stationId = catOrId;
+
+    if (maybeId) {
+      category = catOrId;
+      stationId = maybeId;
+    } else {
+      if (stationId.startsWith("STN-FL") || stationId.startsWith("FLOOD")) category = "flood";
+      else if (stationId.startsWith("STN-WF") || stationId.startsWith("FIRE")) category = "wildfire";
+      else category = "landslide";
+    }
+
+    this.activeStations[category] = stationId;
+    const stations = this.stationsByCategory[category] || [];
+    const st = stations.find((s) => s.id === stationId);
     if (!st) return;
 
-    // Update active pill UI
-    document.querySelectorAll(".sector-pill").forEach((el) => el.classList.remove("active"));
-    const activePill = document.getElementById(`sector-pill-${stationId}`);
-    if (activePill) activePill.classList.add("active");
+    // Switch tab if needed
+    if (this.currentCategory !== category) {
+      this.switchNetworkTab(category);
+    } else {
+      document.querySelectorAll(".sector-pill").forEach((el) => el.classList.remove("active", "active-flood", "active-wildfire"));
+      const activePill = document.getElementById(`sector-pill-${stationId}`);
+      let activeClass = "active";
+      if (category === "flood") activeClass = "active active-flood";
+      else if (category === "wildfire") activeClass = "active active-wildfire";
+      if (activePill) activePill.className = `sector-pill ${activeClass}`;
+    }
 
-    // Update specs on Landslide Card
-    this.updateLandslideCardSpecs(st);
+    // Update specs on corresponding card
+    if (category === "landslide") this.updateLandslideCardSpecs(st);
+    else if (category === "flood") this.updateFloodCardSpecs(st);
+    else if (category === "wildfire") this.updateWildfireCardSpecs(st);
 
     // Notify backend
     try {
-      await fetch("/api/v1/landslides/active-station", {
+      let endpoint = "/api/v1/landslides/active-station";
+      if (category === "flood") endpoint = "/api/v1/floods/active-station";
+      else if (category === "wildfire") endpoint = "/api/v1/wildfires/active-station";
+
+      await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ station_id: stationId }),
@@ -100,8 +173,8 @@ class DashboardController {
     }
 
     // Fly map to station
-    if (flyTo && window.disasterMap && typeof window.disasterMap.focusLandslideStation === "function") {
-      window.disasterMap.focusLandslideStation(stationId);
+    if (flyTo && window.disasterMap && typeof window.disasterMap.focusStation === "function") {
+      window.disasterMap.focusStation(stationId);
     }
   }
 
@@ -131,12 +204,67 @@ class DashboardController {
     }
 
     if (tagEl) {
-      if (st.is_active_iot_field_unit || st.id === this.activeStationId) {
-        tagEl.style.display = "inline-block";
-        tagEl.textContent = "LIVE IoT FIELD UNIT";
-      } else {
-        tagEl.style.display = "none";
-      }
+      tagEl.style.display = (st.is_active_iot_field_unit || st.id === this.activeStations.landslide) ? "inline-block" : "none";
+    }
+  }
+
+  updateFloodCardSpecs(st) {
+    if (!st) return;
+    const codeEl = document.getElementById("fl-stn-code");
+    const nameEl = document.getElementById("fl-stn-name");
+    const coordsEl = document.getElementById("fl-spec-coords");
+    const wwEl = document.getElementById("fl-spec-waterway");
+    const dangerEl = document.getElementById("fl-spec-danger");
+    const cwcEl = document.getElementById("fl-spec-cwc");
+    const assetsEl = document.getElementById("fl-spec-assets");
+    const evacEl = document.getElementById("fl-spec-evac");
+    const tagEl = document.getElementById("fl-live-iot-tag");
+
+    if (codeEl) codeEl.textContent = st.id;
+    if (nameEl) nameEl.textContent = `${st.name} (${st.district}, ${st.state})`;
+    if (coordsEl) coordsEl.textContent = `${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E`;
+    if (wwEl) wwEl.textContent = st.waterway || "Channel";
+    if (dangerEl) dangerEl.textContent = `${st.danger_level_m}m MSL`;
+    if (assetsEl) assetsEl.textContent = st.downhill_assets;
+    if (evacEl) evacEl.textContent = st.safe_assembly;
+
+    if (cwcEl) {
+      cwcEl.textContent = st.cwc_index || "EXTREME";
+      cwcEl.className = "spec-val " + (st.cwc_index === "EXTREME" ? "gsi-badge-extreme" : "gsi-badge-very-high");
+    }
+
+    if (tagEl) {
+      tagEl.style.display = (st.is_active_iot_field_unit || st.id === this.activeStations.flood) ? "inline-block" : "none";
+    }
+  }
+
+  updateWildfireCardSpecs(st) {
+    if (!st) return;
+    const codeEl = document.getElementById("wf-stn-code");
+    const nameEl = document.getElementById("wf-stn-name");
+    const coordsEl = document.getElementById("wf-spec-coords");
+    const bioEl = document.getElementById("wf-spec-biome");
+    const elevEl = document.getElementById("wf-spec-elev");
+    const fsiEl = document.getElementById("wf-spec-fsi");
+    const assetsEl = document.getElementById("wf-spec-assets");
+    const evacEl = document.getElementById("wf-spec-evac");
+    const tagEl = document.getElementById("wf-live-iot-tag");
+
+    if (codeEl) codeEl.textContent = st.id;
+    if (nameEl) nameEl.textContent = `${st.name} (${st.district}, ${st.state})`;
+    if (coordsEl) coordsEl.textContent = `${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E`;
+    if (bioEl) bioEl.textContent = st.biome || "Forest";
+    if (elevEl) elevEl.textContent = `${st.elevation_m}m ASL`;
+    if (assetsEl) assetsEl.textContent = st.downhill_assets;
+    if (evacEl) evacEl.textContent = st.safe_assembly;
+
+    if (fsiEl) {
+      fsiEl.textContent = st.fsi_hazard_class || "EXTREME";
+      fsiEl.className = "spec-val " + (st.fsi_hazard_class === "EXTREME" ? "gsi-badge-extreme" : "gsi-badge-very-high");
+    }
+
+    if (tagEl) {
+      tagEl.style.display = (st.is_active_iot_field_unit || st.id === this.activeStations.wildfire) ? "inline-block" : "none";
     }
   }
 
@@ -395,6 +523,33 @@ class DashboardController {
           badge.textContent = "CLEAR";
           badge.className = "status-pill-badge badge-normal";
         }
+
+        if (data.station_name || data.station_id) {
+          const codeEl = document.getElementById("fl-stn-code");
+          const nameEl = document.getElementById("fl-stn-name");
+          if (codeEl) codeEl.textContent = data.station_id || "STN-FL01";
+          if (nameEl) nameEl.textContent = `${data.station_name || "Brahmaputra Basin"} (${data.district || ""}, ${data.state || ""})`;
+          const coordsEl = document.getElementById("fl-spec-coords");
+          if (coordsEl && state.latitude && state.longitude) {
+            coordsEl.textContent = `${Number(state.latitude).toFixed(4)}° N, ${Number(state.longitude).toFixed(4)}° E`;
+          }
+          if (data.waterway) {
+            const wwEl = document.getElementById("fl-spec-waterway");
+            if (wwEl) wwEl.textContent = data.waterway;
+          }
+          if (data.danger_level_m) {
+            const dlEl = document.getElementById("fl-spec-danger");
+            if (dlEl) dlEl.textContent = `${data.danger_level_m}m MSL`;
+          }
+          if (data.downhill_assets) {
+            const assetsEl = document.getElementById("fl-spec-assets");
+            if (assetsEl) assetsEl.textContent = data.downhill_assets;
+          }
+          if (data.safe_assembly) {
+            const evacEl = document.getElementById("fl-spec-evac");
+            if (evacEl) evacEl.textContent = data.safe_assembly;
+          }
+        }
       } else if (prefix === "wildfire") {
         const flame = data.flame_detected || (data.flame_raw !== undefined && Number(data.flame_raw) <= 1500);
         const mq2 = Number(data.mq2_v || 0);
@@ -415,6 +570,33 @@ class DashboardController {
         } else {
           badge.textContent = "CLEAR";
           badge.className = "status-pill-badge badge-normal";
+        }
+
+        if (data.station_name || data.station_id) {
+          const codeEl = document.getElementById("wf-stn-code");
+          const nameEl = document.getElementById("wf-stn-name");
+          if (codeEl) codeEl.textContent = data.station_id || "STN-WF01";
+          if (nameEl) nameEl.textContent = `${data.station_name || "Similipal Biosphere"} (${data.district || ""}, ${data.state || ""})`;
+          const coordsEl = document.getElementById("wf-spec-coords");
+          if (coordsEl && state.latitude && state.longitude) {
+            coordsEl.textContent = `${Number(state.latitude).toFixed(4)}° N, ${Number(state.longitude).toFixed(4)}° E`;
+          }
+          if (data.biome) {
+            const bioEl = document.getElementById("wf-spec-biome");
+            if (bioEl) bioEl.textContent = data.biome;
+          }
+          if (data.elevation_m) {
+            const elEl = document.getElementById("wf-spec-elev");
+            if (elEl) elEl.textContent = `${data.elevation_m}m ASL`;
+          }
+          if (data.downhill_assets) {
+            const assetsEl = document.getElementById("wf-spec-assets");
+            if (assetsEl) assetsEl.textContent = data.downhill_assets;
+          }
+          if (data.safe_assembly) {
+            const evacEl = document.getElementById("wf-spec-evac");
+            if (evacEl) evacEl.textContent = data.safe_assembly;
+          }
         }
       } else {
         badge.textContent = state.risk_level;

@@ -35,6 +35,8 @@ from simulator.hardware_nodes import (
     WildfireHardwareNode,
 )
 from core.landslide_stations import landslide_station_manager
+from core.flood_stations import flood_station_manager
+from core.wildfire_stations import wildfire_station_manager
 from .websocket_manager import ws_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -194,6 +196,44 @@ async def select_active_landslide_station(req: StationSelectRequest):
     if not success:
         raise HTTPException(status_code=404, detail="Station not found")
     st = landslide_station_manager.get_active_field_station()
+    return {"success": True, "active_station": st}
+
+
+@app.get("/api/v1/floods/stations")
+async def get_flood_stations():
+    """Get all high-vulnerability national flash flood monitoring stations and current active binding."""
+    return {
+        "stations": flood_station_manager.get_all_stations(),
+        "active_station": flood_station_manager.get_active_field_station(),
+    }
+
+
+@app.post("/api/v1/floods/active-station")
+async def select_active_flood_station(req: StationSelectRequest):
+    """Switch the flood station bound to the live field IoT unit."""
+    success = flood_station_manager.set_active_station(req.station_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Station not found")
+    st = flood_station_manager.get_active_field_station()
+    return {"success": True, "active_station": st}
+
+
+@app.get("/api/v1/wildfires/stations")
+async def get_wildfire_stations():
+    """Get all high-vulnerability national wildfire and fire-gas stations and current active binding."""
+    return {
+        "stations": wildfire_station_manager.get_all_stations(),
+        "active_station": wildfire_station_manager.get_active_field_station(),
+    }
+
+
+@app.post("/api/v1/wildfires/active-station")
+async def select_active_wildfire_station(req: StationSelectRequest):
+    """Switch the wildfire station bound to the live field IoT unit."""
+    success = wildfire_station_manager.set_active_station(req.station_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Station not found")
+    st = wildfire_station_manager.get_active_field_station()
     return {"success": True, "active_station": st}
 
 

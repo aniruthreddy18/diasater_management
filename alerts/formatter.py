@@ -53,7 +53,7 @@ def format_telegram_alert(event: HazardEvent) -> str:
         else:
             lines.append(f"  • {key_label}: `{val}`")
 
-    # Add NASA FIRMS confirmation if Wildfire
+    # Add NASA FIRMS confirmation and Station Context if Wildfire
     if event.hazard_type == HazardType.WILDFIRE:
         lines.append("")
         if event.firms_confirmed:
@@ -69,6 +69,48 @@ def format_telegram_alert(event: HazardEvent) -> str:
             )
         else:
             lines.append("*🛰️ NASA FIRMS Corroboration:* `No satellite thermal anomalies detected`")
+
+        sdata = event.sensor_data or {}
+        st_name = sdata.get("station_name")
+        st_id = sdata.get("station_id")
+        district = sdata.get("district")
+        state = sdata.get("state")
+        biome = sdata.get("biome")
+        canopy = sdata.get("canopy_fuel")
+        assets = sdata.get("downhill_assets")
+        evac = sdata.get("safe_assembly")
+
+        if st_name:
+            lines.append("")
+            lines.append(f"*🔥 Fire & Gas Threat Sector:* `{st_id}` — *{st_name}* ({district}, {state})")
+            if biome:
+                lines.append(f"  • *Forest Biome / Canopy:* {biome} | `{canopy}`")
+            if assets:
+                lines.append(f"  • *⚠️ Perimeter Assets at Risk:* {assets}")
+            if evac:
+                lines.append(f"  • *🛡️ Emergency Refuge Zone:* `{evac}`")
+
+    # Add Flood River Basin & Downstream Inundation Context
+    elif event.hazard_type == HazardType.FLASH_FLOOD:
+        sdata = event.sensor_data or {}
+        st_name = sdata.get("station_name")
+        st_id = sdata.get("station_id")
+        district = sdata.get("district")
+        state = sdata.get("state")
+        waterway = sdata.get("waterway")
+        cwc = sdata.get("cwc_index")
+        assets = sdata.get("downhill_assets")
+        evac = sdata.get("safe_assembly")
+
+        if st_name:
+            lines.append("")
+            lines.append(f"*🌊 River Basin Sector:* `{st_id}` — *{st_name}* ({district}, {state})")
+            if waterway:
+                lines.append(f"  • *Waterway Channel:* {waterway} | CWC Index: `{cwc}`")
+            if assets:
+                lines.append(f"  • *⚠️ Downstream Inundation Risk:* {assets}")
+            if evac:
+                lines.append(f"  • *🛡️ Designated Elevated Shelter:* `{evac}`")
 
     # Add Landslide Geological & Downhill Infrastructure Context
     elif event.hazard_type == HazardType.LANDSLIDE:

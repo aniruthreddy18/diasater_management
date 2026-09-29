@@ -85,26 +85,36 @@ class FloodEngine(BaseHazardEngine):
         final_risk = base_risk
         risk_level = risk_engine.classify_risk_score(final_risk)
 
-        # 5. Formulate status message
+        # 5. Formulate status message with real river basin station context
+        from core.flood_stations import flood_station_manager
+        st = flood_station_manager.get_station(packet.device_id) or flood_station_manager.get_active_field_station()
+
+        event_lat = packet.latitude
+        event_lon = packet.longitude
+        if st and abs(packet.latitude - 17.3918) < 0.001:
+            event_lat = st["latitude"]
+            event_lon = st["longitude"]
+
+        st_loc = f"{st['name']} ({st['district']}, {st['state']})" if st else "River Corridor"
+
         if critical_breach:
             msg = (
-                f"FLASH FLOOD IMMINENT: Stage {water_level:.1f} cm (crit: {self.thresholds.water_level_critical_cm} cm), "
-                f"Rising at {rate_of_rise:.1f} cm/min, Rainfall {rainfall_rate:.1f} mm/h."
+                f"FLASH FLOOD SURGE IMMINENT at {st_loc}: Stage {water_level:.1f} cm (crit: {self.thresholds.water_level_critical_cm} cm), "
+                f"Rising at {rate_of_rise:.1f} cm/min. Inundation risk for: {st.get('downhill_assets', 'Downhill riverine tracts')}."
             )
         elif detected:
             msg = (
-                f"FLOOD WARNING DETECTED: Stage {water_level:.1f} cm, Rainfall {rainfall_rate:.1f} mm/h, "
-                f"Flow {water_flow:.1f} m/s."
+                f"FLOOD WARNING DETECTED at {st_loc}: Stage {water_level:.1f} cm, Rainfall {rainfall_rate:.1f} mm/h."
             )
         else:
-            msg = f"Waterways normal. Stage {water_level:.1f} cm, Rainfall {rainfall_rate:.1f} mm/h."
+            msg = f"Waterway levels normal at {st_loc}. Stage {water_level:.1f} cm, Monitoring active."
 
         event = HazardEvent(
             event_id=f"FF_{uuid.uuid4().hex[:8]}",
             device_id=packet.device_id,
             hazard_type=HazardType.FLASH_FLOOD,
-            latitude=packet.latitude,
-            longitude=packet.longitude,
+            latitude=event_lat,
+            longitude=event_lon,
             timestamp=packet.timestamp or datetime.now(timezone.utc).isoformat(),
             detected=detected,
             base_risk_score=base_risk,
@@ -114,6 +124,16 @@ class FloodEngine(BaseHazardEngine):
             final_risk_score=final_risk,
             risk_level=risk_level,
             sensor_data={
+                "station_id": st["id"] if st else packet.device_id,
+                "station_name": st["name"] if st else "River Basin",
+                "district": st.get("district", "Field District") if st else "",
+                "state": st.get("state", "Field State") if st else "",
+                "waterway": st.get("waterway", "River Channel") if st else "",
+                "elevation_m": st.get("elevation_m", 84) if st else 84,
+                "danger_level_m": st.get("danger_level_m", 86.0) if st else 86.0,
+                "cwc_index": st.get("cwc_index", "EXTREME") if st else "EXTREME",
+                "downhill_assets": st.get("downhill_assets", "Downstream Villages") if st else "",
+                "safe_assembly": st.get("safe_assembly", "Elevated Relief Camps") if st else "",
                 "distance_cm": dist,
                 "water_level": water_level,
                 "flow_lpm": water_flow,

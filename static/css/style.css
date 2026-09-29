@@ -1464,6 +1464,55 @@ textarea.alert-input {
   letter-spacing: 0.5px;
 }
 
+.network-hazard-tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.network-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-family: var(--font-main, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.network-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.network-tab-btn.active#net-tab-landslide {
+  background: rgba(255, 183, 3, 0.2);
+  color: #ffb703;
+  border-color: rgba(255, 183, 3, 0.5);
+  box-shadow: 0 0 10px rgba(255, 183, 3, 0.3);
+}
+
+.network-tab-btn.active#net-tab-flood {
+  background: rgba(0, 240, 255, 0.2);
+  color: #00f0ff;
+  border-color: rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.network-tab-btn.active#net-tab-wildfire {
+  background: rgba(255, 42, 95, 0.2);
+  color: #ff2a5f;
+  border-color: rgba(255, 42, 95, 0.5);
+  box-shadow: 0 0 10px rgba(255, 42, 95, 0.3);
+}
+
 .network-badge-counter {
   font-family: var(--font-mono, monospace);
   font-size: 11px;
@@ -1708,5 +1757,29 @@ textarea.alert-input {
   border: 2px solid #ffffff;
   box-shadow: 0 0 18px rgba(239, 68, 68, 0.9);
   animation: radarSonar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.station-pin-flood {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.8);
+}
+
+.station-pin-wildfire {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}
+
+.sector-pill.active-flood {
+  background: rgba(0, 240, 255, 0.18) !important;
+  border-color: #00f0ff !important;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35) !important;
+}
+
+.sector-pill.active-wildfire {
+  background: rgba(255, 42, 95, 0.18) !important;
+  border-color: #ff2a5f !important;
+  box-shadow: 0 0 14px rgba(255, 42, 95, 0.35) !important;
 }
 

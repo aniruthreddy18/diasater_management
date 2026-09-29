@@ -104,14 +104,23 @@ class WildfireEngine(BaseHazardEngine):
 
         detected = bool(critical_breach or warning_breach or score_breach)
 
-        # 4. NASA FIRMS Corroboration Cross-Check (Section 10 & 11)
-        # Only query satellite hotspots when danger is detected or elevated
+        # 4. Resolve high-vulnerability wildfire / chemical gas station
+        from core.wildfire_stations import wildfire_station_manager
+        st = wildfire_station_manager.get_station(packet.device_id) or wildfire_station_manager.get_active_field_station()
+
+        event_lat = packet.latitude
+        event_lon = packet.longitude
+        if st and abs(packet.latitude - 17.3918) < 0.001:
+            event_lat = st["latitude"]
+            event_lon = st["longitude"]
+
+        # NASA FIRMS Corroboration Cross-Check (Section 10 & 11)
         firms_confirmed: Optional[bool] = None
         nearest_firms_distance_km: Optional[float] = None
         firms_adjustment: float = 0.0
 
         if detected or base_risk >= 40.0:
-            firms_result = await self.firms.cross_check(packet.latitude, packet.longitude)
+            firms_result = await self.firms.cross_check(event_lat, event_lon)
             firms_confirmed = firms_result.confirmed
             nearest_firms_distance_km = firms_result.nearest_distance_km
 
@@ -119,12 +128,12 @@ class WildfireEngine(BaseHazardEngine):
                 firms_adjustment = firms_result.risk_adjustment  # +15.0 percentage points
                 logger.info(
                     "NASA FIRMS MATCH: Hotspot within %.2f km of (%f, %f). Adding +%.1f%% risk bonus.",
-                    nearest_firms_distance_km or 0.0, packet.latitude, packet.longitude, firms_adjustment
+                    nearest_firms_distance_km or 0.0, event_lat, event_lon, firms_adjustment
                 )
             else:
                 logger.info(
                     "NASA FIRMS: No hotspot within configured radius of (%f, %f). Nearest is %s km.",
-                    packet.latitude, packet.longitude,
+                    event_lat, event_lon,
                     f"{nearest_firms_distance_km:.2f}" if nearest_firms_distance_km is not None else "None"
                 )
 
@@ -132,32 +141,34 @@ class WildfireEngine(BaseHazardEngine):
         final_risk = risk_engine.clamp_score(base_risk + firms_adjustment)
         risk_level = risk_engine.classify_risk_score(final_risk)
 
-        # 6. Formulate detailed status message
+        # 6. Formulate detailed status message with real forest/biome station context
         firms_text = ""
         if firms_confirmed:
             firms_text = f" | [NASA FIRMS CONFIRMED: Hotspot {nearest_firms_distance_km:.1f} km away, +{firms_adjustment:.0f}% risk boost]"
         elif nearest_firms_distance_km is not None:
             firms_text = f" | [NASA FIRMS: Nearest hotspot {nearest_firms_distance_km:.1f} km away (unconfirmed)]"
 
+        st_loc = f"{st['name']} ({st['district']}, {st['state']})" if st else "Forest Sector"
+
         if critical_breach or receiver_level >= 2:
             msg = (
-                f"WILDFIRE EMERGENCY: Flame={'DETECTED' if flame_detected else 'None'}, "
-                f"MQ2 {mq2_v:.2f}V, Temp {temperature:.1f}°C{firms_text}."
+                f"WILDFIRE EMERGENCY at {st_loc}: Flame={'DETECTED' if flame_detected else 'None'}, "
+                f"MQ2 {mq2_v:.2f}V, Temp {temperature:.1f}°C{firms_text}. Threat perimeter: {st.get('downhill_assets', 'Surrounding hamlets')}."
             )
         elif detected or receiver_level == 1:
             msg = (
-                f"WILDFIRE DANGER DETECTED: MQ2 {mq2_v:.2f}V, Temp {temperature:.1f}°C, "
+                f"WILDFIRE DANGER DETECTED at {st_loc}: MQ2 {mq2_v:.2f}V, Temp {temperature:.1f}°C, "
                 f"Humidity {humidity:.1f}%{firms_text}."
             )
         else:
-            msg = f"Thermal conditions normal. MQ2 {mq2_v:.2f}V, Flame={'CLEAR' if not flame_detected else 'FIRE'}."
+            msg = f"Thermal & gas levels normal at {st_loc}. MQ2 {mq2_v:.2f}V, Monitoring active."
 
         event = HazardEvent(
             event_id=f"WF_{uuid.uuid4().hex[:8]}",
             device_id=packet.device_id,
             hazard_type=HazardType.WILDFIRE,
-            latitude=packet.latitude,
-            longitude=packet.longitude,
+            latitude=event_lat,
+            longitude=event_lon,
             timestamp=packet.timestamp or datetime.now(timezone.utc).isoformat(),
             detected=detected,
             base_risk_score=base_risk,
@@ -167,6 +178,16 @@ class WildfireEngine(BaseHazardEngine):
             final_risk_score=final_risk,
             risk_level=risk_level,
             sensor_data={
+                "station_id": st["id"] if st else packet.device_id,
+                "station_name": st["name"] if st else "Forest Sector",
+                "district": st.get("district", "Field District") if st else "",
+                "state": st.get("state", "Field State") if st else "",
+                "biome": st.get("biome", "Deciduous Forest") if st else "",
+                "canopy_fuel": st.get("canopy_fuel", "Dry Leaf Litter") if st else "",
+                "elevation_m": st.get("elevation_m", 560) if st else 560,
+                "fsi_hazard_class": st.get("fsi_hazard_class", "EXTREME") if st else "EXTREME",
+                "downhill_assets": st.get("downhill_assets", "Perimeter Settlements") if st else "",
+                "safe_assembly": st.get("safe_assembly", "Forest HQ Clear Buffer") if st else "",
                 "temperature": temperature,
                 "humidity": humidity,
                 "smoke": smoke,

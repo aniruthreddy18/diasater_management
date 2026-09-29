@@ -161,3 +161,42 @@ def test_landslide_stations_api(client):
     # Reset back to STN-NE01
     client.post("/api/v1/landslides/active-station", json={"station_id": "STN-NE01"})
 
+
+def test_flood_stations_api(client):
+    # 1. Fetch stations list
+    resp = client.get("/api/v1/floods/stations")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "stations" in data
+    assert len(data["stations"]) >= 6
+    assert data["active_station"]["id"] == "STN-FL01"
+
+    # 2. Switch active station to Alaknanda
+    switch_resp = client.post("/api/v1/floods/active-station", json={"station_id": "STN-FL02"})
+    assert switch_resp.status_code == 200
+    switch_data = switch_resp.json()
+    assert switch_data["active_station"]["id"] == "STN-FL02"
+    assert "Alaknanda" in switch_data["active_station"]["waterway"]
+
+    # 3. Reset back to STN-FL01
+    client.post("/api/v1/floods/active-station", json={"station_id": "STN-FL01"})
+
+
+def test_wildfire_stations_api(client):
+    # 1. Fetch stations list
+    resp = client.get("/api/v1/wildfires/stations")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "stations" in data
+    assert len(data["stations"]) >= 6
+    assert data["active_station"]["id"] == "STN-WF01"
+
+    # 2. Switch active station to Bandipur
+    switch_resp = client.post("/api/v1/wildfires/active-station", json={"station_id": "STN-WF02"})
+    assert switch_resp.status_code == 200
+    switch_data = switch_resp.json()
+    assert switch_data["active_station"]["id"] == "STN-WF02"
+    assert "Bandipur" in switch_data["active_station"]["name"]
+
+    # 3. Reset back to STN-WF01
+    client.post("/api/v1/wildfires/active-station", json={"station_id": "STN-WF01"})

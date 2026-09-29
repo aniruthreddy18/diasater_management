@@ -53,11 +53,11 @@ class DataClassifier:
 
         # 2. Derive from device_id prefix convention
         dev_upper = device_id.upper().strip()
-        if dev_upper.startswith(("FIRE", "WILDFIRE", "PYRO")):
+        if dev_upper.startswith(("FIRE", "WILDFIRE", "PYRO", "STN_WF", "STN-WF", "NODE_3", "NODE3")):
             return HazardType.WILDFIRE
-        elif dev_upper.startswith(("FLOOD", "FLASH_FLOOD", "HYDRO", "WATER")):
+        elif dev_upper.startswith(("FLOOD", "FLASH_FLOOD", "HYDRO", "WATER", "STN_FL", "STN-FL", "NODE_1", "NODE1")):
             return HazardType.FLASH_FLOOD
-        elif dev_upper.startswith(("LANDSLIDE", "SLOPE", "GEO", "SEISMIC", "STN", "NODE_2", "NODE2")):
+        elif dev_upper.startswith(("LANDSLIDE", "SLOPE", "GEO", "SEISMIC", "STN_LS", "STN-LS", "STN-NE", "STN_NE", "STN-WG", "STN_WG", "STN-HIM", "STN_HIM", "STN", "NODE_2", "NODE2")):
             return HazardType.LANDSLIDE
 
         # Default fallback

@@ -60,23 +60,28 @@
   <!-- VIEW 1: TACTICAL MAP & TELEMETRY -->
   <div id="view-tactical">
 
-  <!-- National Landslide Monitoring Network Bar (GSI Corridors) -->
+  <!-- National Multi-Disaster Monitoring Network Bar (GSI, CWC, FSI Corridors) -->
   <section class="national-network-bar">
     <div class="network-bar-header">
       <div class="network-title-group">
         <span class="pulsing-radar-dot"></span>
         <div>
-          <span class="network-title-main">NATIONAL LANDSLIDE EARLY WARNING NETWORK</span>
-          <span class="network-title-sub">GSI & ISRO HIGH-VULNERABILITY CORRIDORS • MACRO-GIS + IOT EDGE</span>
+          <span class="network-title-main">NATIONAL MULTI-DISASTER EARLY WARNING NETWORK</span>
+          <span class="network-title-sub">REAL-WORLD VULNERABLE SECTORS • GSI, CWC & FSI MACRO-GIS + IOT EDGE</span>
         </div>
       </div>
+      <div class="network-hazard-tabs">
+        <button class="network-tab-btn active" id="net-tab-landslide" onclick="window.dashboardController.switchNetworkTab('landslide')">⛰️ LANDSLIDES (GSI)</button>
+        <button class="network-tab-btn" id="net-tab-flood" onclick="window.dashboardController.switchNetworkTab('flood')">🌊 FLASH FLOODS (CWC)</button>
+        <button class="network-tab-btn" id="net-tab-wildfire" onclick="window.dashboardController.switchNetworkTab('wildfire')">🔥 WILDFIRE & GAS (FSI)</button>
+      </div>
       <div class="network-badge-counter">
-        <span class="counter-num" id="total-stations-count">7</span> ACTIVE FIELD SECTORS
+        <span class="counter-num" id="total-stations-count">19</span> MONITORED SECTORS
       </div>
     </div>
     <!-- Interactive Station Selector Pills -->
     <div class="sector-pills-wrap" id="landslide-sector-pills">
-      <!-- Populated dynamically by dashboard.js -->
+      <!-- Populated dynamically by dashboard.js for active disaster category -->
     </div>
   </section>
 
@@ -181,11 +186,50 @@
         <div class="hazard-title-wrap">
           <div class="hazard-symbol">🌊</div>
           <div>
-            <div class="hazard-name">FLASH FLOOD SYSTEM</div>
-            <div class="hazard-node-id" id="node-id-flood">DEVICE: FLOOD_001</div>
+            <div class="hazard-name-row">
+              <div class="hazard-name">FLASH FLOOD SYSTEM</div>
+              <span class="live-iot-tag" id="fl-live-iot-tag">LIVE IoT FIELD UNIT</span>
+            </div>
+            <div class="hazard-node-id" id="node-id-flood">
+              <strong id="fl-stn-code">STN-FL01</strong> • <span id="fl-stn-name">Brahmaputra Basin (Majuli / Kaziranga, Assam)</span>
+            </div>
           </div>
         </div>
-        <div class="status-pill-badge badge-normal" id="badge-flood">CLEAR</div>
+        <div class="status-pill-badge badge-normal" id="badge-flood">NORMAL</div>
+      </div>
+
+      <!-- Real River Basin & Hydrological Profile Strip -->
+      <div class="terrain-spec-strip" id="basin-specs-flood">
+        <div class="spec-cell">
+          <span class="spec-label">GPS COORDS</span>
+          <span class="spec-val highlight-coords" id="fl-spec-coords">26.9538° N, 94.2037° E</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">WATERWAY</span>
+          <span class="spec-val" id="fl-spec-waterway">Brahmaputra Channel</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">DANGER STAGE</span>
+          <span class="spec-val" id="fl-spec-danger">86.0m MSL</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">CWC INDEX</span>
+          <span class="spec-val gsi-badge-extreme" id="fl-spec-cwc">EXTREME</span>
+        </div>
+      </div>
+
+      <!-- Downhill Settlement & Floodplain Impact Box -->
+      <div class="downhill-impact-box" style="border-left-color: #00f0ff; background: rgba(0, 240, 255, 0.08); border-color: rgba(0, 240, 255, 0.25);">
+        <div class="impact-header">
+          <span class="impact-icon">🌊</span>
+          <span class="impact-label" style="color: #38bdf8;">DOWNSTREAM INUNDATION RISK:</span>
+        </div>
+        <div class="impact-text" id="fl-spec-assets">Majuli River Island Settlements, Kaziranga Buffer & NH-715 Highway (Pop at Risk: ~168,000)</div>
+        <div class="impact-evac-row">
+          <span class="evac-icon">🛡️</span>
+          <span class="evac-label" style="color: #38bdf8;">Safe Elevated Refuge:</span>
+          <span class="evac-text" id="fl-spec-evac">Jorhat Elevated Relief Bund (Sector 2 North)</span>
+        </div>
       </div>
 
       <!-- Visual Risk Meter -->
@@ -226,11 +270,50 @@
         <div class="hazard-title-wrap">
           <div class="hazard-symbol">🔥</div>
           <div>
-            <div class="hazard-name">FIRE-GAS SYSTEM</div>
-            <div class="hazard-node-id" id="node-id-wildfire">DEVICE: FIRE_001</div>
+            <div class="hazard-name-row">
+              <div class="hazard-name">FIRE-GAS SYSTEM</div>
+              <span class="live-iot-tag" id="wf-live-iot-tag">LIVE IoT FIELD UNIT</span>
+            </div>
+            <div class="hazard-node-id" id="node-id-wildfire">
+              <strong id="wf-stn-code">STN-WF01</strong> • <span id="wf-stn-name">Similipal Biosphere Reserve (Mayurbhanj, Odisha)</span>
+            </div>
           </div>
         </div>
-        <div class="status-pill-badge badge-normal" id="badge-wildfire">CLEAR</div>
+        <div class="status-pill-badge badge-normal" id="badge-wildfire">NORMAL</div>
+      </div>
+
+      <!-- Real Biome & Canopy Profile Strip -->
+      <div class="terrain-spec-strip" id="biome-specs-wildfire">
+        <div class="spec-cell">
+          <span class="spec-label">GPS COORDS</span>
+          <span class="spec-val highlight-coords" id="wf-spec-coords">21.8600° N, 86.3800° E</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">FOREST BIOME</span>
+          <span class="spec-val" id="wf-spec-biome">Moist Deciduous / Sal</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">ELEVATION</span>
+          <span class="spec-val" id="wf-spec-elev">560m ASL</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">FSI RATING</span>
+          <span class="spec-val gsi-badge-extreme" id="wf-spec-fsi">EXTREME</span>
+        </div>
+      </div>
+
+      <!-- Perimeter Settlement & Wildfire Risk Box -->
+      <div class="downhill-impact-box" style="border-left-color: #ff2a5f; background: rgba(255, 42, 95, 0.08); border-color: rgba(255, 42, 95, 0.25);">
+        <div class="impact-header">
+          <span class="impact-icon">🔥</span>
+          <span class="impact-label" style="color: #ff4d6d;">PERIMETER ASSETS AT RISK:</span>
+        </div>
+        <div class="impact-text" id="wf-spec-assets">Core Tiger Reserve Perimeter, Mankidia & Santhal Hamlets (Pop at Risk: ~19,200)</div>
+        <div class="impact-evac-row">
+          <span class="evac-icon">🛡️</span>
+          <span class="evac-label" style="color: #ff4d6d;">Emergency Refuge Zone:</span>
+          <span class="evac-text" id="wf-spec-evac">Jashipur Forest HQ Clear Buffer (4.5 km Perimeter)</span>
+        </div>
       </div>
 
       <!-- Visual Risk Meter -->

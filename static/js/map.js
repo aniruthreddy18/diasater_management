@@ -382,52 +382,89 @@ class DisasterMapManager {
     });
   }
 
-  renderLandslideStations(stations) {
+  renderStations(category, stations) {
     if (!this.map || !stations) return;
-    this.stationsData = stations;
+    if (!this.categoryLayerGroups) this.categoryLayerGroups = {};
+    if (!this.stationMarkers) this.stationMarkers = {};
 
-    if (this.stationLayerGroup) {
-      this.map.removeLayer(this.stationLayerGroup);
+    // Remove existing layer for this category
+    if (this.categoryLayerGroups[category]) {
+      this.map.removeLayer(this.categoryLayerGroups[category]);
     }
-    this.stationLayerGroup = L.featureGroup().addTo(this.map);
-    this.stationMarkers = {};
+    this.categoryLayerGroups[category] = L.featureGroup().addTo(this.map);
+
+    let emoji = "⛰️";
+    let defaultPin = "station-pin-normal";
+    let agencyTag = "GSI SECTOR";
+    let themeColor = "#ffb703";
+
+    if (category === "flood") {
+      emoji = "🌊";
+      defaultPin = "station-pin-flood";
+      agencyTag = "CWC BASIN";
+      themeColor = "#00f0ff";
+    } else if (category === "wildfire") {
+      emoji = "🔥";
+      defaultPin = "station-pin-wildfire";
+      agencyTag = "FSI SECTOR";
+      themeColor = "#ff2a5f";
+    }
 
     stations.forEach((st) => {
       const isLive = Boolean(st.is_active_iot_field_unit);
-      const pinClass = isLive ? "station-pin-active" : "station-pin-normal";
+      const pinClass = isLive ? "station-pin-active" : defaultPin;
       const icon = L.divIcon({
         className: "custom-div-icon",
-        html: `<div class="station-pin-marker ${pinClass}" style="width: 32px; height: 32px;" title="${st.id}: ${st.name}">⛰️</div>`,
+        html: `<div class="station-pin-marker ${pinClass}" style="width: 32px; height: 32px;" title="${st.id}: ${st.name}">${emoji}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       });
 
-      const marker = L.marker([st.latitude, st.longitude], { icon }).addTo(this.stationLayerGroup);
+      const marker = L.marker([st.latitude, st.longitude], { icon }).addTo(this.categoryLayerGroups[category]);
       this.stationMarkers[st.id] = marker;
+
+      let specRows = "";
+      if (category === "flood") {
+        specRows = `
+          <div>WATERWAY: <span style="color: #38bdf8;">${st.waterway || "Channel"}</span></div>
+          <div>DANGER STAGE: <span style="color: #facc15;">${st.danger_level_m}m MSL</span> | ELEV: ${st.elevation_m}m</div>
+          <div>CWC CLASS: <span style="color: #ef4444; font-weight: bold;">${st.cwc_index}</span></div>
+        `;
+      } else if (category === "wildfire") {
+        specRows = `
+          <div>BIOME: <span style="color: #f87171;">${st.biome || "Forest"}</span></div>
+          <div>FUEL: <span style="color: #facc15;">${st.canopy_fuel || "Canopy"}</span></div>
+          <div>FSI CLASS: <span style="color: #ef4444; font-weight: bold;">${st.fsi_hazard_class}</span></div>
+        `;
+      } else {
+        specRows = `
+          <div>GPS: <span style="color: #38bdf8;">${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E</span></div>
+          <div>SLOPE: <span style="color: #facc15;">${st.slope_deg}° Incline</span> | ELEV: ${st.elevation_m}m ASL</div>
+          <div>GSI CLASS: <span style="color: #f97316; font-weight: bold;">${st.gsi_susceptibility}</span></div>
+        `;
+      }
 
       const popupHtml = `
         <div style="font-family: var(--font-main, sans-serif); min-width: 260px; font-size: 12px; color: #f8fafc; line-height: 1.4;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 6px;">
-            <strong style="font-size: 13px; color: #ffb703;">${st.id} • ${st.name}</strong>
-            <span style="background: ${isLive ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 183, 3, 0.15)'}; color: ${isLive ? '#ff4d6d' : '#fbbf24'}; border: 1px solid ${isLive ? 'rgba(239,68,68,0.4)' : 'rgba(255,183,3,0.3)'}; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 9px;">
-              ${isLive ? '🔴 LIVE IOT UNIT' : '🟡 GSI SECTOR'}
+            <strong style="font-size: 13px; color: ${themeColor};">${st.id} • ${st.name}</strong>
+            <span style="background: ${isLive ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.1)'}; color: ${isLive ? '#ff4d6d' : '#f1f5f9'}; border: 1px solid ${isLive ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.2)'}; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 9px;">
+              ${isLive ? '🔴 LIVE IOT UNIT' : `🟡 ${agencyTag}`}
             </span>
           </div>
           <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">
-            📍 ${st.district}, ${st.state} (${st.region})
+            📍 ${st.district}, ${st.state} (${st.region || ""})
           </div>
           <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 8px; margin: 6px 0; font-size: 11px; font-family: monospace;">
-            <div>GPS: <span style="color: #38bdf8;">${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E</span></div>
-            <div>SLOPE: <span style="color: #facc15;">${st.slope_deg}° Incline</span> | ELEV: ${st.elevation_m}m ASL</div>
-            <div>GSI CLASS: <span style="color: #f97316; font-weight: bold;">${st.gsi_susceptibility}</span></div>
+            ${specRows}
           </div>
           <div style="font-size: 10.5px; color: #f87171; margin-bottom: 4px;">
-            ⚠️ <strong>Downhill Impact:</strong> ${st.downhill_assets}
+            ⚠️ <strong>Impact Threat:</strong> ${st.downhill_assets}
           </div>
           <div style="font-size: 10px; color: #34d399; margin-bottom: 8px;">
             🛡️ <strong>Safe Evacuation:</strong> ${st.safe_assembly}
           </div>
-          <button onclick="window.dashboardController.selectStation('${st.id}')" style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #000; font-weight: 800; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 10px;">
+          <button onclick="window.dashboardController.selectStation('${category}', '${st.id}')" style="width: 100%; background: linear-gradient(135deg, ${themeColor}, #f59e0b); border: none; color: #000; font-weight: 800; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 10px;">
             🎯 MONITOR & BIND THIS SECTOR
           </button>
         </div>
@@ -436,7 +473,19 @@ class DisasterMapManager {
     });
   }
 
-  focusLandslideStation(stationId) {
+  renderLandslideStations(stations) {
+    this.renderStations("landslide", stations);
+  }
+
+  renderFloodStations(stations) {
+    this.renderStations("flood", stations);
+  }
+
+  renderWildfireStations(stations) {
+    this.renderStations("wildfire", stations);
+  }
+
+  focusStation(stationId) {
     if (!this.stationMarkers || !this.stationMarkers[stationId]) return;
     const marker = this.stationMarkers[stationId];
     const latLng = marker.getLatLng();
@@ -444,6 +493,10 @@ class DisasterMapManager {
     setTimeout(() => {
       marker.openPopup();
     }, 1250);
+  }
+
+  focusLandslideStation(stationId) {
+    this.focusStation(stationId);
   }
 }
 
