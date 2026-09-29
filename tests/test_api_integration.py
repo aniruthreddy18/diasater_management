@@ -140,3 +140,24 @@ def test_manual_emergency_broadcast_api(client):
     assert data["event"]["detected"] is True
     assert data["event"]["final_risk_score"] == 88.0
     assert data["alert"] is not None
+
+
+def test_landslide_stations_api(client):
+    # 1. Fetch stations list
+    resp = client.get("/api/v1/landslides/stations")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "stations" in data
+    assert len(data["stations"]) >= 7
+    assert data["active_station"]["id"] == "STN-NE01"
+
+    # 2. Switch active station to Wayanad
+    switch_resp = client.post("/api/v1/landslides/active-station", json={"station_id": "STN-WG02"})
+    assert switch_resp.status_code == 200
+    switch_data = switch_resp.json()
+    assert switch_data["active_station"]["id"] == "STN-WG02"
+    assert switch_data["active_station"]["district"] == "Wayanad"
+
+    # Reset back to STN-NE01
+    client.post("/api/v1/landslides/active-station", json={"station_id": "STN-NE01"})
+

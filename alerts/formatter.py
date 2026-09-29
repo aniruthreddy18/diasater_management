@@ -70,6 +70,28 @@ def format_telegram_alert(event: HazardEvent) -> str:
         else:
             lines.append("*🛰️ NASA FIRMS Corroboration:* `No satellite thermal anomalies detected`")
 
+    # Add Landslide Geological & Downhill Infrastructure Context
+    elif event.hazard_type == HazardType.LANDSLIDE:
+        sdata = event.sensor_data or {}
+        st_name = sdata.get("station_name")
+        st_id = sdata.get("station_id")
+        district = sdata.get("district")
+        state = sdata.get("state")
+        slope = sdata.get("slope_deg")
+        elev = sdata.get("elevation_m")
+        assets = sdata.get("downhill_assets")
+        evac = sdata.get("safe_assembly")
+
+        if st_name:
+            lines.append("")
+            lines.append(f"*⛰️ High-Risk Sector:* `{st_id}` — *{st_name}* ({district}, {state})")
+            if slope or elev:
+                lines.append(f"  • *Terrain Profile:* Slope `{slope}°` Incline | Elev `{elev}m ASL`")
+            if assets:
+                lines.append(f"  • *⚠️ Downhill Assets at Risk:* {assets}")
+            if evac:
+                lines.append(f"  • *🛡️ Designated Evacuation Zone:* `{evac}`")
+
     # Locality Risk Radius Classification
     radii = risk_engine.calculate_risk_radii_km(event.hazard_type.value, event.final_risk_score)
     lines.extend([

@@ -34,6 +34,7 @@ from simulator.hardware_nodes import (
     FloodHardwareNode,
     WildfireHardwareNode,
 )
+from core.landslide_stations import landslide_station_manager
 from .websocket_manager import ws_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -171,6 +172,29 @@ async def get_recent_events(limit: int = Query(default=50, ge=1, le=100)):
 async def get_recent_alerts(limit: int = Query(default=50, ge=1, le=100)):
     """Get history of dispatched early warning alerts."""
     return telegram_dispatcher.get_recent_alerts(limit=limit)
+
+
+class StationSelectRequest(BaseModel):
+    station_id: str
+
+
+@app.get("/api/v1/landslides/stations")
+async def get_landslide_stations():
+    """Get all high-vulnerability national landslide monitoring stations and current active binding."""
+    return {
+        "stations": landslide_station_manager.get_all_stations(),
+        "active_station": landslide_station_manager.get_active_field_station(),
+    }
+
+
+@app.post("/api/v1/landslides/active-station")
+async def select_active_landslide_station(req: StationSelectRequest):
+    """Switch the station bound to the live field IoT unit."""
+    success = landslide_station_manager.set_active_station(req.station_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Station not found")
+    st = landslide_station_manager.get_active_field_station()
+    return {"success": True, "active_station": st}
 
 
 @app.get("/api/v1/telegram/status")

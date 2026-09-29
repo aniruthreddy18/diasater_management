@@ -1401,3 +1401,312 @@ textarea.alert-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==============================================================================
+   NATIONAL LANDSLIDE NETWORK & REAL SECTOR VULNERABILITY STYLING (SIH)
+   ============================================================================== */
+
+.national-network-bar {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%);
+  border: 1px solid rgba(255, 183, 3, 0.25);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.network-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.network-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pulsing-radar-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ffb703;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 10px #ffb703;
+  animation: radarPulse 1.8s infinite;
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 183, 3, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 183, 3, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 183, 3, 0); }
+}
+
+.network-title-main {
+  font-family: var(--font-display, inherit);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #f8fafc;
+}
+
+.network-title-sub {
+  display: block;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.network-badge-counter {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+
+.sector-pills-wrap {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.sector-pills-wrap::-webkit-scrollbar {
+  height: 4px;
+}
+
+.sector-pills-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 183, 3, 0.25);
+  border-radius: 4px;
+}
+
+.sector-pill {
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.sector-pill:hover {
+  background: rgba(255, 183, 3, 0.1);
+  border-color: rgba(255, 183, 3, 0.4);
+  transform: translateY(-2px);
+}
+
+.sector-pill.active {
+  background: rgba(255, 183, 3, 0.18);
+  border-color: #ffb703;
+  box-shadow: 0 0 14px rgba(255, 183, 3, 0.35);
+}
+
+.sector-pill-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.sector-pill-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffb703;
+}
+
+.sector-pill-tag {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 245, 155, 0.15);
+  color: #00f59b;
+  border: 1px solid rgba(0, 245, 155, 0.3);
+}
+
+.sector-pill-tag.tag-live {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d6d;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.sector-pill-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.sector-pill-region {
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+/* Landslide Card Real Location Enhancements */
+.hazard-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.live-iot-tag {
+  font-size: 9px;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d6d;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: liveTagPulse 2s infinite ease-in-out;
+}
+
+@keyframes liveTagPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+.terrain-spec-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 10px 0 12px 0;
+}
+
+.spec-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-label {
+  font-size: 8px;
+  font-family: var(--font-mono, monospace);
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.spec-val {
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.highlight-coords {
+  color: #38bdf8;
+}
+
+.gsi-badge-very-high {
+  color: #f97316;
+}
+
+.gsi-badge-extreme {
+  color: #ef4444;
+}
+
+.gsi-badge-high {
+  color: #eab308;
+}
+
+.downhill-impact-box {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-left: 3px solid #ef4444;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+
+.impact-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+
+.impact-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #f87171;
+  font-family: var(--font-mono, monospace);
+}
+
+.impact-text {
+  color: #f1f5f9;
+  font-size: 10.5px;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.impact-evac-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #34d399;
+}
+
+.evac-label {
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.evac-text {
+  font-family: var(--font-mono, monospace);
+}
+
+/* Landslide Station Leaflet Pin Glow */
+.station-pin-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.station-pin-marker:hover {
+  transform: scale(1.2);
+}
+
+.station-pin-normal {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
+}
+
+.station-pin-active {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.9);
+  animation: radarSonar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+

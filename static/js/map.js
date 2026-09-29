@@ -381,6 +381,70 @@ class DisasterMapManager {
       this.firmsMarkers.push(m);
     });
   }
+
+  renderLandslideStations(stations) {
+    if (!this.map || !stations) return;
+    this.stationsData = stations;
+
+    if (this.stationLayerGroup) {
+      this.map.removeLayer(this.stationLayerGroup);
+    }
+    this.stationLayerGroup = L.featureGroup().addTo(this.map);
+    this.stationMarkers = {};
+
+    stations.forEach((st) => {
+      const isLive = Boolean(st.is_active_iot_field_unit);
+      const pinClass = isLive ? "station-pin-active" : "station-pin-normal";
+      const icon = L.divIcon({
+        className: "custom-div-icon",
+        html: `<div class="station-pin-marker ${pinClass}" style="width: 32px; height: 32px;" title="${st.id}: ${st.name}">⛰️</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      const marker = L.marker([st.latitude, st.longitude], { icon }).addTo(this.stationLayerGroup);
+      this.stationMarkers[st.id] = marker;
+
+      const popupHtml = `
+        <div style="font-family: var(--font-main, sans-serif); min-width: 260px; font-size: 12px; color: #f8fafc; line-height: 1.4;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 6px;">
+            <strong style="font-size: 13px; color: #ffb703;">${st.id} • ${st.name}</strong>
+            <span style="background: ${isLive ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 183, 3, 0.15)'}; color: ${isLive ? '#ff4d6d' : '#fbbf24'}; border: 1px solid ${isLive ? 'rgba(239,68,68,0.4)' : 'rgba(255,183,3,0.3)'}; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 9px;">
+              ${isLive ? '🔴 LIVE IOT UNIT' : '🟡 GSI SECTOR'}
+            </span>
+          </div>
+          <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">
+            📍 ${st.district}, ${st.state} (${st.region})
+          </div>
+          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 8px; margin: 6px 0; font-size: 11px; font-family: monospace;">
+            <div>GPS: <span style="color: #38bdf8;">${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E</span></div>
+            <div>SLOPE: <span style="color: #facc15;">${st.slope_deg}° Incline</span> | ELEV: ${st.elevation_m}m ASL</div>
+            <div>GSI CLASS: <span style="color: #f97316; font-weight: bold;">${st.gsi_susceptibility}</span></div>
+          </div>
+          <div style="font-size: 10.5px; color: #f87171; margin-bottom: 4px;">
+            ⚠️ <strong>Downhill Impact:</strong> ${st.downhill_assets}
+          </div>
+          <div style="font-size: 10px; color: #34d399; margin-bottom: 8px;">
+            🛡️ <strong>Safe Evacuation:</strong> ${st.safe_assembly}
+          </div>
+          <button onclick="window.dashboardController.selectStation('${st.id}')" style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #000; font-weight: 800; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 10px;">
+            🎯 MONITOR & BIND THIS SECTOR
+          </button>
+        </div>
+      `;
+      marker.bindPopup(popupHtml);
+    });
+  }
+
+  focusLandslideStation(stationId) {
+    if (!this.stationMarkers || !this.stationMarkers[stationId]) return;
+    const marker = this.stationMarkers[stationId];
+    const latLng = marker.getLatLng();
+    this.map.flyTo(latLng, 12, { duration: 1.2 });
+    setTimeout(() => {
+      marker.openPopup();
+    }, 1250);
+  }
 }
 
 // Global instance for dashboard

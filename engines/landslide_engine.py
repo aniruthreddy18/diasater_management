@@ -94,18 +94,31 @@ class LandslideEngine(BaseHazardEngine):
         final_risk = base_risk
         risk_level = risk_engine.classify_risk_score(final_risk)
 
-        # 5. Formulate status message
+        # 5. Formulate status message with real geographical station context
+        from core.landslide_stations import landslide_station_manager
+        st = landslide_station_manager.get_station(packet.device_id) or landslide_station_manager.get_active_field_station()
+
+        # If packet uses default indoor GPS, map to the active vulnerable station GPS
+        event_lat = packet.latitude
+        event_lon = packet.longitude
+        if st and abs(packet.latitude - 17.3918) < 0.001:
+            event_lat = st["latitude"]
+            event_lon = st["longitude"]
+
+        st_loc = f"{st['name']} ({st['district']}, {st['state']})" if st else "Slope Sector"
+
         if critical_breach or receiver_level >= 2:
             msg = (
-                f"CRITICAL SLOPE INSTABILITY: Soil moisture {moisture:.1f}%, "
-                f"Rain {rain_pct:.1f}%."
+                f"CRITICAL SLOPE INSTABILITY at {st_loc}: "
+                f"Soil moisture {moisture:.1f}%, Rain {rain_pct:.1f}%. Downhill assets at immediate risk: {st.get('downhill_assets', 'Valley settlements')}."
             )
         elif detected or receiver_level == 1:
             msg = (
-                f"LANDSLIDE THREAT DETECTED: Soil {moisture:.1f}%, Rain {rain_pct:.1f}%."
+                f"LANDSLIDE WARNING at {st_loc}: "
+                f"Soil {moisture:.1f}%, Rain {rain_pct:.1f}%."
             )
         else:
-            msg = f"Slope conditions stable. Soil {moisture:.1f}%, Rain {rain_pct:.1f}%."
+            msg = f"Slope conditions stable at {st_loc}. Monitoring active."
 
         seq_num = data.get("sequence", data.get("packet_seq", data.get("seq", None)))
 
@@ -113,8 +126,8 @@ class LandslideEngine(BaseHazardEngine):
             event_id=f"LS_{uuid.uuid4().hex[:8]}",
             device_id=packet.device_id,
             hazard_type=HazardType.LANDSLIDE,
-            latitude=packet.latitude,
-            longitude=packet.longitude,
+            latitude=event_lat,
+            longitude=event_lon,
             timestamp=packet.timestamp or datetime.now(timezone.utc).isoformat(),
             detected=detected,
             base_risk_score=base_risk,
@@ -124,6 +137,15 @@ class LandslideEngine(BaseHazardEngine):
             final_risk_score=final_risk,
             risk_level=risk_level,
             sensor_data={
+                "station_id": st["id"] if st else packet.device_id,
+                "station_name": st["name"] if st else "Field Slope",
+                "district": st.get("district", "Field District") if st else "",
+                "state": st.get("state", "Field State") if st else "",
+                "elevation_m": st.get("elevation_m", 810) if st else 810,
+                "slope_deg": st.get("slope_deg", 44) if st else 44,
+                "geology": st.get("geology", "Weathered Strata") if st else "",
+                "downhill_assets": st.get("downhill_assets", "Lifeline Road") if st else "",
+                "safe_assembly": st.get("safe_assembly", "High Ground") if st else "",
                 "tilt_angle": tilt,
                 "soil_moisture": moisture,
                 "soil_pct": float(data.get("soil_pct", moisture)),

@@ -57,7 +57,7 @@ class DataClassifier:
             return HazardType.WILDFIRE
         elif dev_upper.startswith(("FLOOD", "FLASH_FLOOD", "HYDRO", "WATER")):
             return HazardType.FLASH_FLOOD
-        elif dev_upper.startswith(("LANDSLIDE", "SLOPE", "GEO", "SEISMIC")):
+        elif dev_upper.startswith(("LANDSLIDE", "SLOPE", "GEO", "SEISMIC", "STN", "NODE_2", "NODE2")):
             return HazardType.LANDSLIDE
 
         # Default fallback

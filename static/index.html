@@ -10,7 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   
   <!-- Modern Vibrant Styling -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+  <link rel="stylesheet" href="/static/css/style.css?v=3.0">
 </head>
 <body>
 
@@ -60,20 +60,79 @@
   <!-- VIEW 1: TACTICAL MAP & TELEMETRY -->
   <div id="view-tactical">
 
+  <!-- National Landslide Monitoring Network Bar (GSI Corridors) -->
+  <section class="national-network-bar">
+    <div class="network-bar-header">
+      <div class="network-title-group">
+        <span class="pulsing-radar-dot"></span>
+        <div>
+          <span class="network-title-main">NATIONAL LANDSLIDE EARLY WARNING NETWORK</span>
+          <span class="network-title-sub">GSI & ISRO HIGH-VULNERABILITY CORRIDORS • MACRO-GIS + IOT EDGE</span>
+        </div>
+      </div>
+      <div class="network-badge-counter">
+        <span class="counter-num" id="total-stations-count">7</span> ACTIVE FIELD SECTORS
+      </div>
+    </div>
+    <!-- Interactive Station Selector Pills -->
+    <div class="sector-pills-wrap" id="landslide-sector-pills">
+      <!-- Populated dynamically by dashboard.js -->
+    </div>
+  </section>
+
   <!-- Simultaneous Multi-Disaster Cards (Three Independent Systems) -->
   <section class="disaster-grid">
     
-    <!-- SYSTEM 1: LANDSLIDE -->
+    <!-- SYSTEM 1: LANDSLIDE (REAL VULNERABLE SECTOR DEPLOYMENT) -->
     <div class="hazard-card card-landslide" id="card-landslide">
       <div class="card-top">
         <div class="hazard-title-wrap">
           <div class="hazard-symbol">⛰️</div>
           <div>
-            <div class="hazard-name">LANDSLIDE SYSTEM</div>
-            <div class="hazard-node-id" id="node-id-landslide">DEVICE: LANDSLIDE_001</div>
+            <div class="hazard-name-row">
+              <div class="hazard-name">LANDSLIDE MONITORING</div>
+              <span class="live-iot-tag" id="ls-live-iot-tag">LIVE IoT FIELD UNIT</span>
+            </div>
+            <div class="hazard-node-id" id="node-id-landslide">
+              <strong id="ls-stn-code">STN-NE01</strong> • <span id="ls-stn-name">Haflong Slope (Dima Hasao, Assam)</span>
+            </div>
           </div>
         </div>
-        <div class="status-pill-badge badge-normal" id="badge-landslide">CLEAR</div>
+        <div class="status-pill-badge badge-normal" id="badge-landslide">NORMAL</div>
+      </div>
+
+      <!-- Real Geological & Terrain Profile Strip -->
+      <div class="terrain-spec-strip" id="terrain-specs-landslide">
+        <div class="spec-cell">
+          <span class="spec-label">GPS COORDS</span>
+          <span class="spec-val highlight-coords" id="ls-spec-coords">25.1837° N, 93.0189° E</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">SLOPE INCLINE</span>
+          <span class="spec-val" id="ls-spec-slope">44° Critical</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">ELEVATION</span>
+          <span class="spec-val" id="ls-spec-elev">810m ASL</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">GSI RATING</span>
+          <span class="spec-val gsi-badge-very-high" id="ls-spec-gsi">VERY HIGH</span>
+        </div>
+      </div>
+
+      <!-- Downhill Settlement & Infrastructure Impact Box -->
+      <div class="downhill-impact-box">
+        <div class="impact-header">
+          <span class="impact-icon">⚠️</span>
+          <span class="impact-label">DOWNHILL ASSETS AT RISK:</span>
+        </div>
+        <div class="impact-text" id="ls-spec-assets">Lumding–Badarpur Hill Railway Line & NH-27 Lifeline Corridor (Pop at Risk: ~18,500)</div>
+        <div class="impact-evac-row">
+          <span class="evac-icon">🛡️</span>
+          <span class="evac-label">Safe Evacuation Route:</span>
+          <span class="evac-text" id="ls-spec-evac">Upper Haflong High Ground (1.8 km North)</span>
+        </div>
       </div>
 
       <!-- Visual Risk Meter -->
@@ -527,10 +586,10 @@
   </div> <!-- /view-alerts -->
 
   <!-- Application Scripts -->
-  <script src="/static/js/map.js?v=2.5"></script>
-  <script src="/static/js/dashboard.js?v=2.5"></script>
-  <script src="/static/js/simulator.js?v=2.5"></script>
-  <script src="/static/js/alerts_dashboard.js?v=2.5"></script>
+  <script src="/static/js/map.js?v=3.0"></script>
+  <script src="/static/js/dashboard.js?v=3.0"></script>
+  <script src="/static/js/simulator.js?v=3.0"></script>
+  <script src="/static/js/alerts_dashboard.js?v=3.0"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {

@@ -7,15 +7,137 @@ class DashboardController {
   constructor() {
     this.ws = null;
     this.reconnectTimer = null;
+    this.stations = [];
+    this.activeStationId = "STN-NE01";
   }
 
   init() {
+    this.fetchLandslideStations();
     this.fetchInitialStateREST();
     this.connectWebSocket();
     this.setupInspector();
     
     // Polling fallback every 3 seconds to guarantee continuous live sync
     setInterval(() => this.pollStatusREST(), 3000);
+  }
+
+  async fetchLandslideStations() {
+    try {
+      const resp = await fetch("/api/v1/landslides/stations");
+      if (resp.ok) {
+        const data = await resp.json();
+        this.stations = data.stations || [];
+        if (data.active_station && data.active_station.id) {
+          this.activeStationId = data.active_station.id;
+        }
+        this.renderSectorPills();
+        if (window.disasterMap && typeof window.disasterMap.renderLandslideStations === "function") {
+          window.disasterMap.renderLandslideStations(this.stations);
+        }
+        const activeSt = this.stations.find((s) => s.id === this.activeStationId) || this.stations[0];
+        if (activeSt) {
+          this.updateLandslideCardSpecs(activeSt);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch landslide stations:", err);
+    }
+  }
+
+  renderSectorPills() {
+    const wrap = document.getElementById("landslide-sector-pills");
+    const countEl = document.getElementById("total-stations-count");
+    if (countEl) countEl.textContent = this.stations.length;
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+    this.stations.forEach((st) => {
+      const isSelected = (st.id === this.activeStationId);
+      const isLive = Boolean(st.is_active_iot_field_unit);
+      const pill = document.createElement("div");
+      pill.className = `sector-pill ${isSelected ? "active" : ""}`;
+      pill.id = `sector-pill-${st.id}`;
+      pill.onclick = () => this.selectStation(st.id, true);
+
+      const tagHtml = isLive
+        ? `<span class="sector-pill-tag tag-live">LIVE IoT</span>`
+        : `<span class="sector-pill-tag">${st.gsi_susceptibility || "GSI"}</span>`;
+
+      pill.innerHTML = `
+        <div class="sector-pill-top">
+          <span class="sector-pill-code">${st.id}</span>
+          ${tagHtml}
+        </div>
+        <div class="sector-pill-name">${st.name}</div>
+        <div class="sector-pill-region">📍 ${st.district}, ${st.state}</div>
+      `;
+      wrap.appendChild(pill);
+    });
+  }
+
+  async selectStation(stationId, flyTo = true) {
+    this.activeStationId = stationId;
+    const st = this.stations.find((s) => s.id === stationId);
+    if (!st) return;
+
+    // Update active pill UI
+    document.querySelectorAll(".sector-pill").forEach((el) => el.classList.remove("active"));
+    const activePill = document.getElementById(`sector-pill-${stationId}`);
+    if (activePill) activePill.classList.add("active");
+
+    // Update specs on Landslide Card
+    this.updateLandslideCardSpecs(st);
+
+    // Notify backend
+    try {
+      await fetch("/api/v1/landslides/active-station", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ station_id: stationId }),
+      });
+    } catch (e) {
+      console.warn("Could not notify backend of active station change:", e);
+    }
+
+    // Fly map to station
+    if (flyTo && window.disasterMap && typeof window.disasterMap.focusLandslideStation === "function") {
+      window.disasterMap.focusLandslideStation(stationId);
+    }
+  }
+
+  updateLandslideCardSpecs(st) {
+    if (!st) return;
+    const codeEl = document.getElementById("ls-stn-code");
+    const nameEl = document.getElementById("ls-stn-name");
+    const coordsEl = document.getElementById("ls-spec-coords");
+    const slopeEl = document.getElementById("ls-spec-slope");
+    const elevEl = document.getElementById("ls-spec-elev");
+    const gsiEl = document.getElementById("ls-spec-gsi");
+    const assetsEl = document.getElementById("ls-spec-assets");
+    const evacEl = document.getElementById("ls-spec-evac");
+    const tagEl = document.getElementById("ls-live-iot-tag");
+
+    if (codeEl) codeEl.textContent = st.id;
+    if (nameEl) nameEl.textContent = `${st.name} (${st.district}, ${st.state})`;
+    if (coordsEl) coordsEl.textContent = `${st.latitude.toFixed(4)}° N, ${st.longitude.toFixed(4)}° E`;
+    if (slopeEl) slopeEl.textContent = `${st.slope_deg}° Critical`;
+    if (elevEl) elevEl.textContent = `${st.elevation_m}m ASL`;
+    if (assetsEl) assetsEl.textContent = st.downhill_assets;
+    if (evacEl) evacEl.textContent = st.safe_assembly;
+
+    if (gsiEl) {
+      gsiEl.textContent = st.gsi_susceptibility || "HIGH";
+      gsiEl.className = "spec-val " + (st.gsi_susceptibility === "EXTREME" ? "gsi-badge-extreme" : "gsi-badge-very-high");
+    }
+
+    if (tagEl) {
+      if (st.is_active_iot_field_unit || st.id === this.activeStationId) {
+        tagEl.style.display = "inline-block";
+        tagEl.textContent = "LIVE IoT FIELD UNIT";
+      } else {
+        tagEl.style.display = "none";
+      }
+    }
   }
 
   async fetchInitialStateREST() {
@@ -232,6 +354,34 @@ class DashboardController {
         } else {
           badge.textContent = "CLEAR";
           badge.className = "status-pill-badge badge-normal";
+        }
+
+        if (data.station_name || data.station_id) {
+          const codeEl = document.getElementById("ls-stn-code");
+          const nameEl = document.getElementById("ls-stn-name");
+          if (codeEl) codeEl.textContent = data.station_id || "STN-NE01";
+          if (nameEl) nameEl.textContent = `${data.station_name || "Haflong Slope"} (${data.district || ""}, ${data.state || ""})`;
+          
+          const coordsEl = document.getElementById("ls-spec-coords");
+          if (coordsEl && state.latitude && state.longitude) {
+            coordsEl.textContent = `${Number(state.latitude).toFixed(4)}° N, ${Number(state.longitude).toFixed(4)}° E`;
+          }
+          if (data.slope_deg) {
+            const slopeEl = document.getElementById("ls-spec-slope");
+            if (slopeEl) slopeEl.textContent = `${data.slope_deg}° Critical`;
+          }
+          if (data.elevation_m) {
+            const elevEl = document.getElementById("ls-spec-elev");
+            if (elevEl) elevEl.textContent = `${data.elevation_m}m ASL`;
+          }
+          if (data.downhill_assets) {
+            const assetsEl = document.getElementById("ls-spec-assets");
+            if (assetsEl) assetsEl.textContent = data.downhill_assets;
+          }
+          if (data.safe_assembly) {
+            const evacEl = document.getElementById("ls-spec-evac");
+            if (evacEl) evacEl.textContent = data.safe_assembly;
+          }
         }
       } else if (prefix === "flood") {
         const alarmLevel = (data.alarm_level !== undefined) ? Number(data.alarm_level) : (state.detected ? 2 : 0);
@@ -604,3 +754,4 @@ class DashboardController {
 
 // Global dashboard controller
 window.dashboardCtrl = new DashboardController();
+window.dashboardController = window.dashboardCtrl;
