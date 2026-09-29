@@ -83,6 +83,14 @@ class TelegramConfig(BaseModel):
     api_url: str = "https://api.telegram.org/bot"
 
 
+class SupabaseConfig(BaseModel):
+    """Supabase Cloud Database & Realtime Configuration."""
+    url: str = os.getenv("SUPABASE_URL", "")
+    key: str = os.getenv("SUPABASE_KEY", "")
+    anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
+    enabled: bool = os.getenv("SUPABASE_ENABLED", "true").lower() == "true"
+
+
 class AppSettings(BaseModel):
     """Unified application settings."""
     app_name: str = "Multi-Disaster Early Warning System"
@@ -96,6 +104,7 @@ class AppSettings(BaseModel):
     firms: FirmsConfig = Field(default_factory=FirmsConfig)
     risk: RiskThresholds = Field(default_factory=RiskThresholds)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+    supabase: SupabaseConfig = Field(default_factory=SupabaseConfig)
 
 
 # Global settings instance

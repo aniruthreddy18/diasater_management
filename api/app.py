@@ -5,6 +5,7 @@ Multi-Disaster Early Warning System
 
 import os
 import uuid
+import asyncio
 import logging
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -37,6 +38,7 @@ from simulator.hardware_nodes import (
 from core.landslide_stations import landslide_station_manager
 from core.flood_stations import flood_station_manager
 from core.wildfire_stations import wildfire_station_manager
+from core.supabase_manager import supabase_manager
 from .websocket_manager import ws_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -48,7 +50,7 @@ async def process_incoming_packet(packet: StandardPacket) -> HazardEvent:
     """
     Execute full pipeline:
     Standard Packet -> Data Classifier -> Domain Engine -> FIRMS Check (if Wildfire) ->
-    State Manager Update -> Telegram Alert Check -> WebSocket Broadcast
+    State Manager Update -> Telegram Alert Check -> Supabase Cloud Save -> WebSocket Broadcast
     """
     # 1. Route and evaluate through independent engine
     hazard_event = await data_classifier.route_and_process(packet)
@@ -59,7 +61,13 @@ async def process_incoming_packet(packet: StandardPacket) -> HazardEvent:
     # 3. Check and dispatch Telegram alert if risk threshold exceeded
     alert_record = await telegram_dispatcher.send_event_alert(hazard_event)
 
-    # 4. Broadcast live update to all connected map dashboards
+    # 4. Asynchronously persist to Supabase Cloud Database (PostgreSQL)
+    if supabase_manager.is_configured():
+        asyncio.create_task(supabase_manager.log_telemetry(hazard_event))
+        if alert_record:
+            asyncio.create_task(supabase_manager.log_alert(alert_record))
+
+    # 5. Broadcast live update to all connected map dashboards
     status_snapshot = await state_manager.get_multi_disaster_status()
     await ws_manager.broadcast(
         message_type="HAZARD_UPDATE",
@@ -83,6 +91,11 @@ async def lifespan(app: FastAPI):
         logger.info("Telegram Alerts: ACTIVE (Chat ID: %s)", telegram_dispatcher.chat_id)
     else:
         logger.info("Telegram Alerts: RUNNING IN LOCAL/SIMULATION MODE (Set TELEGRAM_BOT_TOKEN & CHAT_ID to enable live Telegram push)")
+
+    if supabase_manager.is_configured():
+        logger.info("Supabase Cloud Database: CONFIGURED & CONNECTED (%s)", supabase_manager.url)
+    else:
+        logger.info("Supabase Cloud Database: LOCAL FALLBACK MODE")
 
     yield
     logger.info("Shutting down %s", settings.app_name)
@@ -291,6 +304,19 @@ async def update_telegram_config(req: TelegramConfigRequest):
             logger.warning("Could not persist Telegram credentials to .env: %s", e)
 
     return result
+
+
+@app.get("/api/v1/cloud/status")
+async def get_cloud_connection_status():
+    """Get Supabase Cloud connection and sync status."""
+    return supabase_manager.get_cloud_status()
+
+
+@app.get("/api/v1/cloud/telemetry")
+async def get_cloud_telemetry(limit: int = Query(default=50, ge=1, le=100), hazard_type: Optional[str] = None):
+    """Fetch historical telemetry logs directly from Supabase Cloud."""
+    records = await supabase_manager.get_recent_telemetry(limit=limit, hazard_type=hazard_type)
+    return {"count": len(records), "data": records}
 
 
 @app.post("/api/v1/alerts/broadcast")

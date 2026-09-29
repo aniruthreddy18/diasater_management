@@ -200,3 +200,14 @@ def test_wildfire_stations_api(client):
 
     # 3. Reset back to STN-WF01
     client.post("/api/v1/wildfires/active-station", json={"station_id": "STN-WF01"})
+
+
+def test_cloud_status_api(client):
+    resp = client.get("/api/v1/cloud/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "configured" in data
+    assert "provider" in data
+    assert "Supabase" in data["provider"]
+    assert "project_url" in data
+    assert "status" in data
