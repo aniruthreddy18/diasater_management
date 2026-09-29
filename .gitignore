@@ -1,0 +1,33 @@
+# Virtual Environment
+venv
+venv/
+ENV/
+env/
+.venv/
+
+# Environment Secrets & API Keys
+.env
+.env.local
+.env.production
+
+# Compiled files & caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local binaries & tools
+bin/
+cloudflared
+*.tgz
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
